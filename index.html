@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciclo de Estudos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #F5F7FA;
+            --accent-color: #FF6B6B;
+            --text-color: #333333;
+            --border-color: #E1E4E8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--secondary-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            background-color: var(--primary-color);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .tab:hover {
+            background-color: var(--accent-color);
+        }
+
+        .tab.active {
+            background-color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--accent-color);
+        }
+
+        .bloco {
+            display: inline-flex;
+            flex-direction: column;
+            width: 100px;
+            height: 60px;
+            border: 1px solid var(--border-color);
+            margin: 5px;
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+            cursor: move;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            position: relative;
+            font-size: 12px;
+            user-select: none;
+        }
+
+        .bloco.concluido {
+            background-color: #4CAF50 !important;
+            color: white;
+        }
+
+        .bloco input[type="checkbox"] {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 15px;
+            height: 15px;
+        }
+
+        .intervalo {
+            display: inline-flex;
+            flex-direction: column;
+            width: 100px;
+            height: 60px;
+            border: 1px dashed var(--border-color);
+            margin: 5px;
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--secondary-color);
+            font-size: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--secondary-color);
+        }
+
+        /* FIX 1: removidos backticks inválidos — CSS agora é CSS puro */
+        .bloco-controls {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px;
+            z-index: 10;
+        }
+
+        .bloco-controls button {
+            display: block;
+            width: 100%;
+            margin-bottom: 5px;
+            padding: 5px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ciclo de Estudos</h1>
+
+        <div class="tab-container">
+            <button class="tab active" data-tab="home">Home</button>
+            <button class="tab" data-tab="materias">Matérias</button>
+            <button class="tab" data-tab="variaveis">Variáveis</button>
+            <button class="tab" data-tab="ajustes">Ajustes</button>
+            <button class="tab" data-tab="ciclo">Ciclo</button>
+            <button class="tab" data-tab="configuracoes">Configurações</button>
+            <button class="tab" data-tab="anotacoes">Anotações</button>
+            <button class="tab" data-tab="exportar">Exportar</button>
+        </div>
+
+        <div id="home" class="tab-content active">
+            <h2>Configuração do Ciclo</h2>
+            <div id="inicio">
+                <form id="horasForm">
+                    <label for="horasSemanais">Quantas horas por semana você pode dedicar aos estudos?</label>
+                    <input type="number" id="horasSemanais" name="horasSemanais" min="1" required>
+                    <button type="submit">Próximo</button>
+                </form>
+            </div>
+            <div id="continuar" style="display: none;">
+                <button id="continuarEstudo">Continuar Último Estudo</button>
+                <button id="novoEstudo">Iniciar Novo Estudo</button>
+            </div>
+        </div>
+
+        <div id="materias" class="tab-content">
+            <h2>Selecionar Matérias</h2>
+            <div id="materiasLista"></div>
+            <input type="text" id="novaMateriaNome" placeholder="Nome da Matéria">
+            <input type="text" id="novaMateriaSigla" placeholder="Sigla (até 3 letras)" maxlength="3">
+            <button id="adicionarMateria">Adicionar Matéria</button>
+            <button id="proximoMaterias">Próximo</button>
+        </div>
+
+        <div id="variaveis" class="tab-content">
+            <h2>Definir Variáveis por Matéria</h2>
+            <table id="tabelaVariaveis">
+                <thead>
+                    <tr>
+                        <th>Matéria</th>
+                        <th>Peso (1-10)</th>
+                        <th>Extensão/Volume (1-10)</th>
+                        <th>Dificuldade (1-10)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button id="calcularBlocos">Calcular Blocos</button>
+        </div>
+
+        <div id="ajustes" class="tab-content">
+            <h2>Ajustar Quantidade de Blocos por Matéria</h2>
+            <table id="tabelaAjustes">
+                <thead>
+                    <tr>
+                        <th>Matéria</th>
+                        <th>Blocos</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button id="ajustarBlocos">Ajustar Blocos</button>
+        </div>
+
+        <div id="ciclo" class="tab-content">
+            <h2>Seu Ciclo de Estudos</h2>
+            <div id="blocosContainer"></div>
+            <div id="tempoControle">
+                <select id="tipoTempo">
+                    <option value="cronometro">Cronômetro</option>
+                    <option value="timer">Timer</option>
+                </select>
+                <div id="timerConfig" style="display: none;">
+                    <input type="number" id="timerHoras" min="0" max="23" placeholder="Horas">
+                    <input type="number" id="timerMinutos" min="0" max="59" placeholder="Minutos">
+                </div>
+                <span id="tempo">00:00:00</span>
+                <button id="iniciarPausar">Iniciar</button>
+                <button id="resetar">Resetar</button>
+            </div>
+        </div>
+
+        <div id="configuracoes" class="tab-content">
+            <h2>Configurações Avançadas</h2>
+            <div>
+                <label for="duracaoBloco">Duração do Bloco (minutos):</label>
+                <input type="number" id="duracaoBloco" min="15" max="120" value="60">
+            </div>
+            <div>
+                <label for="intervaloEntreBlocos">Intervalo entre Blocos (minutos):</label>
+                <input type="number" id="intervaloEntreBlocos" min="0" max="30" value="5">
+            </div>
+            <div>
+                <label for="blocosPorSessao">Blocos por Sessão:</label>
+                <input type="number" id="blocosPorSessao" min="1" max="10" value="4">
+            </div>
+            <button id="salvarConfiguracoes">Salvar Configurações</button>
+        </div>
+
+        <div id="anotacoes" class="tab-content">
+            <h2>Anotações</h2>
+            <textarea id="anotacoesTexto" rows="10" placeholder="Faça suas anotações aqui (ex: página em que parou)"></textarea>
+            <button id="salvarAnotacoes">Salvar Anotações</button>
+        </div>
+
+        <div id="exportar" class="tab-content">
+            <h2>Exportar Ciclo</h2>
+            <button id="gerarPDF">Gerar PDF</button>
+            <button id="exportarExcel">Exportar para Excel</button>
+        </div>
+    </div>
+
+    <script>
+        let materiasList = [
+            {nome: "AFO", legenda: "AFO"},
+            {nome: "CONTABILIDADE GERAL", legenda: "CGE"},
+            {nome: "CONTABILIDADE PÚBLICA", legenda: "CPB"},
+            {nome: "AUDITORIA", legenda: "AUD"},
+            {nome: "CONTROLE EXTERNO", legenda: "CEX"}
+        ];
+
+        let materiasSelecionadas = [];
+        let blocosAtivos = [];
+        let coresUsadas = [];
+        let tempoDecorrido = 0;
+        let tempoTotal = 0;
+        let cronometroInterval;
+        let cronometroRodando = false;
+        let modoCronometro = true;
+
+        let configuracoes = {
+            duracaoBloco: 60,
+            intervaloEntreBlocos: 5,
+            blocosPorSessao: 4
+        };
+
+        function alternarAba(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+        }
+
+        function gerarCorAleatoria() {
+            const h = Math.floor(Math.random() * 360);
+            const s = Math.floor(Math.random() * 30) + 70;
+            const l = Math.floor(Math.random() * 20) + 70;
+            return `hsl(${h}, ${s}%, ${l}%)`;
+        }
+
+        // FIX 7: limite de tentativas para evitar loop infinito
+        function gerarCorUnica() {
+            let cor;
+            let tentativas = 0;
+            do {
+                cor = gerarCorAleatoria();
+                tentativas++;
+            } while ((coresUsadas.includes(cor) || isGreenish(cor)) && tentativas < 100);
+            coresUsadas.push(cor);
+            return cor;
+        }
+
+        function isGreenish(cor) {
+            const hue = parseInt(cor.match(/hsl\((\d+)/)[1]);
+            return hue > 70 && hue < 150;
+        }
+
+        // FIX 3: converte HSL para hex para uso correto no Excel
+        function hslToHex(hsl) {
+            const match = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+            if (!match) return 'FFFFFF';
+            const h = parseInt(match[1]) / 360;
+            const s = parseInt(match[2]) / 100;
+            const l = parseInt(match[3]) / 100;
+            let r, g, b;
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            const toHex = x => Math.round(x * 255).toString(16).padStart(2, '0');
+            return `${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+        }
+
+        function inicializarSelecaoMaterias() {
+            const materiasContainer = document.getElementById("materiasLista");
+            materiasContainer.innerHTML = "";
+            materiasList.forEach(materia => {
+                adicionarMateriaAoDOM(materia);
+            });
+        }
+
+        function adicionarMateriaAoDOM(materia) {
+            const materiasContainer = document.getElementById("materiasLista");
+            const div = document.createElement("div");
+            div.className = "materia-item";
+            div.innerHTML = `
+                <input type="checkbox" id="${materia.legenda}" value="${materia.legenda}">
+                <label for="${materia.legenda}">${materia.nome}</label>
+                <button class="remover-materia" data-legenda="${materia.legenda}">&times;</button>
+            `;
+            materiasContainer.appendChild(div);
+
+            div.querySelector('.remover-materia').addEventListener('click', function() {
+                removerMateria(materia.legenda);
+            });
+        }
+
+        function removerMateria(legenda) {
+            materiasList = materiasList.filter(m => m.legenda !== legenda);
+            inicializarSelecaoMaterias();
+            salvarEstado();
+        }
+
+        function avancarHorasSemanais(event) {
+            event.preventDefault();
+            const horasSemanais = document.getElementById("horasSemanais").value;
+            if (horasSemanais && parseInt(horasSemanais) > 0) {
+                alternarAba('materias');
+            } else {
+                alert("Por favor, insira um número válido de horas semanais.");
+            }
+        }
+
+        function avancarSelecaoMaterias() {
+            materiasSelecionadas = Array.from(document.querySelectorAll('#materiasLista input[type="checkbox"]:checked'))
+                .map(checkbox => {
+                    const materia = materiasList.find(m => m.legenda === checkbox.value);
+                    return {...materia, cor: gerarCorUnica()};
+                });
+
+            if (materiasSelecionadas.length > 0) {
+                preencherTabelaVariaveis();
+                alternarAba('variaveis');
+            } else {
+                alert("Por favor, selecione pelo menos uma matéria.");
+            }
+        }
+
+        function preencherTabelaVariaveis() {
+            const tabela = document.getElementById("tabelaVariaveis").getElementsByTagName('tbody')[0];
+            tabela.innerHTML = "";
+            materiasSelecionadas.forEach(materia => {
+                const row = tabela.insertRow();
+                row.insertCell(0).innerText = materia.nome;
+                ['peso', 'extensao', 'dificuldade'].forEach(variavel => {
+                    const cell = row.insertCell();
+                    const input = document.createElement("input");
+                    input.type = "number";
+                    input.min = "1";
+                    input.max = "10";
+                    input.required = true;
+                    input.name = `${variavel}-${materia.legenda}`;
+                    cell.appendChild(input);
+                });
+            });
+        }
+
+        function calcularBlocos() {
+            const horasSemanais = parseInt(document.getElementById('horasSemanais').value);
+            if (isNaN(horasSemanais) || horasSemanais <= 0) {
+                alert("Por favor, insira um número válido de horas semanais.");
+                return;
+            }
+
+            const minutosTotais = horasSemanais * 60;
+            const duracaoBloco = configuracoes.duracaoBloco;
+            if (duracaoBloco <= 0) {
+                alert('A duração do bloco deve ser maior que zero. Por favor, verifique as configurações.');
+                return;
+            }
+
+            const totalBlocos = Math.floor(minutosTotais / duracaoBloco);
+            let blocos = [];
+            let totalPonderado = 0;
+
+            // FIX 6: flag para interromper o processamento ao encontrar campo inválido
+            let valido = true;
+            materiasSelecionadas.forEach(materia => {
+                if (!valido) return;
+                const peso = parseFloat(document.getElementsByName(`peso-${materia.legenda}`)[0].value);
+                const extensao = parseFloat(document.getElementsByName(`extensao-${materia.legenda}`)[0].value);
+                const dificuldade = parseFloat(document.getElementsByName(`dificuldade-${materia.legenda}`)[0].value);
+
+                if (isNaN(peso) || isNaN(extensao) || isNaN(dificuldade)) {
+                    alert(`Por favor, preencha todos os campos com valores numéricos para a matéria ${materia.nome}.`);
+                    valido = false;
+                    return;
+                }
+
+                const valorPonderado = (peso * 0.5 + extensao * 0.25 + dificuldade * 0.25);
+                totalPonderado += valorPonderado;
+                blocos.push({ ...materia, valorPonderado });
+            });
+
+            if (!valido) return;
+
+            if (blocos.length === 0) {
+                alert("Não há matérias selecionadas para calcular os blocos.");
+                return;
+            }
+
+            let blocosAlocados = 0;
+            blocos.forEach((bloco, index) => {
+                if (index === blocos.length - 1) {
+                    bloco.quantidadeBlocos = totalBlocos - blocosAlocados;
+                } else {
+                    bloco.quantidadeBlocos = Math.ceil((bloco.valorPonderado / totalPonderado) * totalBlocos);
+                    if (blocosAlocados + bloco.quantidadeBlocos > totalBlocos) {
+                        bloco.quantidadeBlocos = totalBlocos - blocosAlocados;
+                    }
+                }
+                blocosAlocados += bloco.quantidadeBlocos;
+            });
+
+            if (blocosAlocados < totalBlocos) {
+                const diferenca = totalBlocos - blocosAlocados;
+                for (let i = 0; i < diferenca; i++) {
+                    blocos[i % blocos.length].quantidadeBlocos++;
+                }
+            } else if (blocosAlocados > totalBlocos) {
+                const excesso = blocosAlocados - totalBlocos;
+                for (let i = 0; i < excesso; i++) {
+                    const idx = blocos.length - 1 - (i % blocos.length);
+                    if (blocos[idx].quantidadeBlocos > 1) {
+                        blocos[idx].quantidadeBlocos--;
+                    }
+                }
+            }
+
+            const materiasSemBlocos = blocos.filter(bloco => bloco.quantidadeBlocos === 0);
+            if (materiasSemBlocos.length > 0) {
+                const mensagem = `Atenção: As seguintes matérias ficaram sem blocos alocados:\n${materiasSemBlocos.map(b => b.nome).join(', ')}\nConsidere ajustar os pesos ou aumentar o tempo total de estudo.`;
+                alert(mensagem);
+            }
+
+            preencherTabelaAjustes(blocos);
+            alternarAba('ajustes');
+        }
+
+        function preencherTabelaAjustes(blocos) {
+            const tabela = document.getElementById("tabelaAjustes").getElementsByTagName('tbody')[0];
+            tabela.innerHTML = "";
+            blocos.forEach(bloco => {
+                const row = tabela.insertRow();
+                row.insertCell(0).innerText = bloco.nome;
+                const cell = row.insertCell(1);
+                const input = document.createElement("input");
+                input.type = "number";
+                input.value = bloco.quantidadeBlocos;
+                input.name = `blocos-${bloco.legenda}`;
+                input.min = "0";
+                cell.appendChild(input);
+            });
+        }
+
+        function ajustarBlocos() {
+            let blocos = [];
+
+            // FIX 4: removida validação incorreta que comparava blocos com horas semanais
+            materiasSelecionadas.forEach(materia => {
+                const quantidadeBlocos = parseInt(document.getElementsByName(`blocos-${materia.legenda}`)[0].value) || 0;
+                blocos.push({ ...materia, quantidadeBlocos });
+            });
+
+            if (blocos.every(b => b.quantidadeBlocos === 0)) {
+                alert('Pelo menos uma matéria deve ter blocos alocados.');
+                return;
+            }
+
+            blocosAtivos = distribuirBlocosAleatoriamente(blocos);
+            exibirCicloVisual(blocosAtivos);
+            alternarAba('ciclo');
+        }
+
+        function distribuirBlocosAleatoriamente(blocos) {
+            let blocosDistribuidos = [];
+            blocos.forEach(bloco => {
+                for (let i = 0; i < bloco.quantidadeBlocos; i++) {
+                    blocosDistribuidos.push({ ...bloco });
+                }
+            });
+
+            for (let i = blocosDistribuidos.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [blocosDistribuidos[i], blocosDistribuidos[j]] = [blocosDistribuidos[j], blocosDistribuidos[i]];
+            }
+
+            // Evitar mais de 2 blocos consecutivos da mesma matéria
+            for (let i = 2; i < blocosDistribuidos.length; i++) {
+                if (blocosDistribuidos[i].legenda === blocosDistribuidos[i-1].legenda &&
+                    blocosDistribuidos[i].legenda === blocosDistribuidos[i-2].legenda) {
+                    let j = i + 1;
+                    while (j < blocosDistribuidos.length && blocosDistribuidos[j].legenda === blocosDistribuidos[i].legenda) {
+                        j++;
+                    }
+                    if (j < blocosDistribuidos.length) {
+                        [blocosDistribuidos[i], blocosDistribuidos[j]] = [blocosDistribuidos[j], blocosDistribuidos[i]];
+                    }
+                }
+            }
+
+            return blocosDistribuidos;
+        }
+
+        function exibirCicloVisual(blocos) {
+            const container = document.getElementById("blocosContainer");
+            container.innerHTML = "";
+
+            let blocoNaSessao = 1;
+
+            blocos.forEach((bloco, index) => {
+                const divBloco = document.createElement("div");
+                divBloco.className = "bloco";
+                divBloco.style.backgroundColor = bloco.cor;
+                divBloco.innerText = `${bloco.legenda}\n${bloco.duracaoEspecifica || configuracoes.duracaoBloco}min`;
+                divBloco.setAttribute("data-index", index);
+                divBloco.draggable = true;
+
+                if (bloco.concluido) {
+                    divBloco.classList.add("concluido");
+                }
+
+                const controls = document.createElement("div");
+                controls.className = "bloco-controls";
+                controls.style.display = "none";
+                controls.innerHTML = `
+                    <button class="mover-esquerda">⬅️ Mover</button>
+                    <button class="mover-direita">Mover ➡️</button>
+                    <button class="editar">✏️ Editar</button>
+                    <button class="concluir">✅ Concluir</button>
+                `;
+                divBloco.appendChild(controls);
+
+                divBloco.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        toggleBloco(this);
+                    }
+                });
+
+                divBloco.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    mostrarControles(this);
+                });
+
+                let touchTimer;
+                divBloco.addEventListener('touchstart', function() {
+                    touchTimer = setTimeout(() => {
+                        mostrarControles(this);
+                    }, 500);
+                });
+
+                divBloco.addEventListener('touchend', function() {
+                    clearTimeout(touchTimer);
+                });
+
+                divBloco.addEventListener('touchmove', function() {
+                    clearTimeout(touchTimer);
+                });
+
+                controls.querySelector('.mover-esquerda').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    moverBloco(index, -1);
+                });
+
+                controls.querySelector('.mover-direita').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    moverBloco(index, 1);
+                });
+
+                controls.querySelector('.editar').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    editarBloco(bloco);
+                });
+
+                controls.querySelector('.concluir').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleBloco(divBloco);
+                });
+
+                divBloco.addEventListener('dragstart', handleDragStart, false);
+                divBloco.addEventListener('dragover', handleDragOver, false);
+                divBloco.addEventListener('drop', handleDrop, false);
+                // FIX 5: restaurar opacidade após o arrasto
+                divBloco.addEventListener('dragend', function() {
+                    this.style.opacity = '1';
+                }, false);
+
+                container.appendChild(divBloco);
+
+                blocoNaSessao++;
+
+                if (blocoNaSessao > configuracoes.blocosPorSessao) {
+                    const divIntervalo = document.createElement("div");
+                    divIntervalo.className = "intervalo";
+                    divIntervalo.innerText = `Intervalo\n${configuracoes.intervaloEntreBlocos}min`;
+                    container.appendChild(divIntervalo);
+                    blocoNaSessao = 1;
+                }
+            });
+
+            inicializarControlesTempo();
+        }
+
+        function mostrarControles(bloco) {
+            const controls = bloco.querySelector('.bloco-controls');
+            controls.style.display = controls.style.display === "none" ? "block" : "none";
+        }
+
+        // FIX 2: removida função mostrarContextMenu que referenciava elemento inexistente (#blocoContextMenu)
+
+        function handleDragStart(e) {
+            this.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.getAttribute('data-index'));
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            const sourceIndex = parseInt(e.dataTransfer.getData('text/html'));
+            const targetIndex = parseInt(this.getAttribute('data-index'));
+
+            if (sourceIndex !== targetIndex) {
+                [blocosAtivos[sourceIndex], blocosAtivos[targetIndex]] = [blocosAtivos[targetIndex], blocosAtivos[sourceIndex]];
+                exibirCicloVisual(blocosAtivos);
+                salvarEstado();
+            }
+
+            return false;
+        }
+
+        function editarBloco(bloco) {
+            const novaDuracao = prompt("Insira a nova duração do bloco (em minutos):", bloco.duracaoEspecifica || configuracoes.duracaoBloco);
+            if (novaDuracao !== null) {
+                const duracaoInt = parseInt(novaDuracao);
+                if (!isNaN(duracaoInt) && duracaoInt > 0) {
+                    bloco.duracaoEspecifica = duracaoInt;
+                    exibirCicloVisual(blocosAtivos);
+                    salvarEstado();
+                } else {
+                    alert("Por favor, insira um número válido de minutos.");
+                }
+            }
+        }
+
+        function toggleBloco(blocoElement) {
+            const index = parseInt(blocoElement.getAttribute('data-index'));
+            blocosAtivos[index].concluido = !blocosAtivos[index].concluido;
+            blocoElement.classList.toggle("concluido");
+            salvarEstado();
+            verificarConclusao();
+        }
+
+        function verificarConclusao() {
+            const todosConcluidos = blocosAtivos.every(bloco => bloco.concluido);
+            if (todosConcluidos) {
+                alert("Parabéns! Você completou todo o ciclo de estudos!");
+            }
+        }
+
+        function moverBloco(index, direcao) {
+            const novoIndex = index + direcao;
+            if (novoIndex >= 0 && novoIndex < blocosAtivos.length) {
+                [blocosAtivos[index], blocosAtivos[novoIndex]] = [blocosAtivos[novoIndex], blocosAtivos[index]];
+                exibirCicloVisual(blocosAtivos);
+                salvarEstado();
+            }
+        }
+
+        function inicializarControlesTempo() {
+            document.getElementById('tempoControle').style.display = 'block';
+        }
+
+        function alternarModoTempo() {
+            modoCronometro = document.getElementById('tipoTempo').value === 'cronometro';
+            document.getElementById('timerConfig').style.display = modoCronometro ? 'none' : 'block';
+            resetarTempo();
+        }
+
+        function iniciarPausarTempo() {
+            if (cronometroRodando) {
+                clearInterval(cronometroInterval);
+                document.getElementById('iniciarPausar').textContent = 'Retomar';
+            } else {
+                if (!modoCronometro && tempoDecorrido === 0) {
+                    const horas = parseInt(document.getElementById('timerHoras').value) || 0;
+                    const minutos = parseInt(document.getElementById('timerMinutos').value) || 0;
+                    tempoTotal = (horas * 3600) + (minutos * 60);
+                    tempoDecorrido = tempoTotal;
+                }
+                cronometroInterval = setInterval(atualizarTempo, 1000);
+                document.getElementById('iniciarPausar').textContent = 'Pausar';
+            }
+            cronometroRodando = !cronometroRodando;
+        }
+
+        function atualizarTempo() {
+            if (modoCronometro) {
+                tempoDecorrido++;
+            } else {
+                tempoDecorrido--;
+                if (tempoDecorrido <= 0) {
+                    clearInterval(cronometroInterval);
+                    cronometroRodando = false;
+                    document.getElementById('iniciarPausar').textContent = 'Iniciar';
+                    alert('Tempo esgotado!');
+                }
+            }
+            atualizarExibicaoTempo();
+        }
+
+        function atualizarExibicaoTempo() {
+            const tempo = modoCronometro ? tempoDecorrido : Math.max(0, tempoDecorrido);
+            const horas = Math.floor(tempo / 3600);
+            const minutos = Math.floor((tempo % 3600) / 60);
+            const segundos = tempo % 60;
+            document.getElementById('tempo').textContent =
+                `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+        }
+
+        function resetarTempo() {
+            clearInterval(cronometroInterval);
+            cronometroRodando = false;
+            tempoDecorrido = 0;
+            document.getElementById('iniciarPausar').textContent = 'Iniciar';
+            atualizarExibicaoTempo();
+        }
+
+        function salvarAnotacoes() {
+            const anotacoes = document.getElementById('anotacoesTexto').value;
+            localStorage.setItem('cicloEstudosAnotacoes', anotacoes);
+            alert('Anotações salvas com sucesso!');
+        }
+
+        function carregarAnotacoes() {
+            const anotacoesSalvas = localStorage.getItem('cicloEstudosAnotacoes');
+            if (anotacoesSalvas) {
+                document.getElementById('anotacoesTexto').value = anotacoesSalvas;
+            }
+        }
+
+        function salvarConfiguracoes() {
+            const novaDuracaoBloco = parseInt(document.getElementById('duracaoBloco').value);
+            const novoIntervaloEntreBlocos = parseInt(document.getElementById('intervaloEntreBlocos').value);
+            const novoBlocosPorSessao = parseInt(document.getElementById('blocosPorSessao').value);
+
+            if (isNaN(novaDuracaoBloco) || novaDuracaoBloco < 1) {
+                alert('A duração do bloco deve ser um número positivo.');
+                return;
+            }
+
+            if (isNaN(novoIntervaloEntreBlocos) || novoIntervaloEntreBlocos < 0) {
+                alert('O intervalo entre blocos deve ser um número não negativo.');
+                return;
+            }
+
+            if (isNaN(novoBlocosPorSessao) || novoBlocosPorSessao < 1) {
+                alert('O número de blocos por sessão deve ser um número positivo.');
+                return;
+            }
+
+            configuracoes.duracaoBloco = novaDuracaoBloco;
+            configuracoes.intervaloEntreBlocos = novoIntervaloEntreBlocos;
+            configuracoes.blocosPorSessao = novoBlocosPorSessao;
+
+            localStorage.setItem('cicloEstudosConfiguracoes', JSON.stringify(configuracoes));
+            alert('Configurações salvas com sucesso!');
+
+            if (blocosAtivos.length > 0) {
+                if (confirm('Deseja recalcular os blocos com as novas configurações?')) {
+                    calcularBlocos();
+                } else {
+                    exibirCicloVisual(blocosAtivos);
+                }
+            }
+        }
+
+        function carregarConfiguracoes() {
+            const configSalvas = localStorage.getItem('cicloEstudosConfiguracoes');
+            if (configSalvas) {
+                configuracoes = JSON.parse(configSalvas);
+            }
+            document.getElementById('duracaoBloco').value = configuracoes.duracaoBloco;
+            document.getElementById('intervaloEntreBlocos').value = configuracoes.intervaloEntreBlocos;
+            document.getElementById('blocosPorSessao').value = configuracoes.blocosPorSessao;
+        }
+
+        function salvarEstado() {
+            const estado = {
+                materiasList,
+                materiasSelecionadas,
+                blocosAtivos,
+                tempoDecorrido,
+                modoCronometro,
+                configuracoes
+            };
+            localStorage.setItem('cicloEstudosEstado', JSON.stringify(estado));
+        }
+
+        function carregarEstado() {
+            const estadoSalvo = localStorage.getItem('cicloEstudosEstado');
+            if (estadoSalvo) {
+                const estado = JSON.parse(estadoSalvo);
+                materiasList = estado.materiasList;
+                materiasSelecionadas = estado.materiasSelecionadas;
+                blocosAtivos = estado.blocosAtivos;
+                tempoDecorrido = estado.tempoDecorrido;
+                modoCronometro = estado.modoCronometro;
+                configuracoes = estado.configuracoes;
+
+                document.getElementById('horasSemanais').value = blocosAtivos.length;
+                document.getElementById('inicio').style.display = 'none';
+                document.getElementById('continuar').style.display = 'block';
+            }
+        }
+
+        function continuarEstudo() {
+            exibirCicloVisual(blocosAtivos);
+            alternarAba('ciclo');
+        }
+
+        function iniciarNovoEstudo() {
+            localStorage.removeItem('cicloEstudosEstado');
+            localStorage.removeItem('cicloEstudosAnotacoes');
+            location.reload();
+        }
+
+        // FIX 9: gerarPDF usando Blob URL em vez de document.write (depreciado)
+        function gerarPDF() {
+            let printContent = `
+                <html>
+                <head>
+                    <title>Ciclo de Estudos - PDF</title>
+                    <style>
+                        @page { size: A4 landscape; margin: 1cm; }
+                        body { font-family: Arial, sans-serif; font-size: 10px; width: 277mm; height: 190mm; }
+                        .ciclo-container { display: flex; flex-wrap: wrap; justify-content: flex-start; }
+                        .sessao { margin-bottom: 10px; page-break-inside: avoid; }
+                        .bloco {
+                            display: inline-block; width: 60px; height: 30px;
+                            border: 1px solid #000; margin: 2px; text-align: center;
+                            vertical-align: middle; line-height: 15px;
+                        }
+                        .intervalo {
+                            display: inline-block; width: 60px; height: 30px;
+                            border: 1px dashed #000; margin: 2px; text-align: center;
+                            vertical-align: middle; line-height: 15px;
+                        }
+                        h1 { font-size: 16px; margin-bottom: 10px; }
+                        h2 { font-size: 14px; margin-top: 5px; margin-bottom: 5px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Ciclo de Estudos</h1>
+                    <div class="ciclo-container">
+            `;
+
+            let blocoCounter = 0;
+            let sessaoCounter = 1;
+
+            printContent += '<div class="sessao">';
+            printContent += `<h2>Sessão ${sessaoCounter}</h2>`;
+
+            blocosAtivos.forEach((bloco) => {
+                if (blocoCounter % configuracoes.blocosPorSessao === 0 && blocoCounter !== 0) {
+                    printContent += `<div class="intervalo">Intervalo<br>${configuracoes.intervaloEntreBlocos}min</div>`;
+                    printContent += '</div>';
+                    sessaoCounter++;
+                    printContent += '<div class="sessao">';
+                    printContent += `<h2>Sessão ${sessaoCounter}</h2>`;
+                }
+
+                printContent += `<div class="bloco" style="background-color: ${bloco.cor}">${bloco.legenda}<br>${bloco.duracaoEspecifica || configuracoes.duracaoBloco}min</div>`;
+                blocoCounter++;
+            });
+
+            printContent += '</div></div></body></html>';
+
+            const blob = new Blob([printContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const printWindow = window.open(url, '_blank');
+            setTimeout(() => {
+                printWindow.print();
+                URL.revokeObjectURL(url);
+            }, 250);
+        }
+
+        function exportarParaExcel() {
+            let wb = XLSX.utils.book_new();
+            let ws_data = [["Ciclo de Estudos"]];
+
+            let blocoCounter = 0;
+            let sessaoCounter = 1;
+            let linha = [];
+
+            blocosAtivos.forEach((bloco, index) => {
+                if (blocoCounter % configuracoes.blocosPorSessao === 0 && blocoCounter !== 0) {
+                    linha.push({v: `Intervalo (${configuracoes.intervaloEntreBlocos}min)`, s: {fill: {fgColor: {rgb: "FFFFFF"}}}});
+                    ws_data.push(linha);
+
+                    linha = [{v: `Sessão ${sessaoCounter}`, s: {font: {bold: true}}}];
+                    sessaoCounter++;
+                }
+
+                // FIX 3: converter cor HSL para hex antes de passar ao Excel
+                const hexCor = hslToHex(bloco.cor);
+                linha.push({
+                    v: `${bloco.legenda} (${bloco.duracaoEspecifica || configuracoes.duracaoBloco}min)`,
+                    s: {fill: {fgColor: {rgb: hexCor}}}
+                });
+
+                blocoCounter++;
+
+                if (index === blocosAtivos.length - 1 || blocoCounter % configuracoes.blocosPorSessao === 0) {
+                    ws_data.push(linha);
+                    linha = [];
+                }
+            });
+
+            let ws = XLSX.utils.aoa_to_sheet(ws_data);
+            XLSX.utils.book_append_sheet(wb, ws, "Ciclo de Estudos");
+            XLSX.writeFile(wb, "ciclo_de_estudos.xlsx");
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    alternarAba(this.getAttribute('data-tab'));
+                });
+            });
+
+            document.getElementById('horasForm').addEventListener('submit', avancarHorasSemanais);
+            document.getElementById('proximoMaterias').addEventListener('click', avancarSelecaoMaterias);
+            document.getElementById('calcularBlocos').addEventListener('click', calcularBlocos);
+            document.getElementById('ajustarBlocos').addEventListener('click', ajustarBlocos);
+
+            document.getElementById('adicionarMateria').addEventListener('click', function() {
+                const nome = document.getElementById('novaMateriaNome').value.trim();
+                const sigla = document.getElementById('novaMateriaSigla').value.trim().toUpperCase();
+                if (nome && sigla) {
+                    if (sigla.length > 3) {
+                        alert('A sigla deve ter no máximo 3 letras.');
+                        return;
+                    }
+                    if (materiasList.some(m => m.legenda === sigla)) {
+                        alert('Já existe uma matéria com essa sigla. Por favor, escolha outra.');
+                        return;
+                    }
+                    const novaMateria = {nome: nome, legenda: sigla};
+                    materiasList.push(novaMateria);
+                    adicionarMateriaAoDOM(novaMateria);
+                    document.getElementById('novaMateriaNome').value = '';
+                    document.getElementById('novaMateriaSigla').value = '';
+                    alert('Matéria adicionada com sucesso!');
+                } else {
+                    alert('Para adicionar uma nova matéria, preencha tanto o nome quanto a sigla.');
+                }
+            });
+
+            document.getElementById('salvarAnotacoes').addEventListener('click', salvarAnotacoes);
+            document.getElementById('tipoTempo').addEventListener('change', alternarModoTempo);
+            document.getElementById('iniciarPausar').addEventListener('click', iniciarPausarTempo);
+            document.getElementById('resetar').addEventListener('click', resetarTempo);
+            document.getElementById('salvarConfiguracoes').addEventListener('click', salvarConfiguracoes);
+            document.getElementById('continuarEstudo').addEventListener('click', continuarEstudo);
+            document.getElementById('novoEstudo').addEventListener('click', iniciarNovoEstudo);
+            document.getElementById('gerarPDF').addEventListener('click', gerarPDF);
+            document.getElementById('exportarExcel').addEventListener('click', exportarParaExcel);
+
+            inicializarSelecaoMaterias();
+            carregarAnotacoes();
+            carregarConfiguracoes();
+            carregarEstado();
+        });
+
+        // FIX 10: salvar estado periodicamente (a cada 30s) e também na saída da página
+        setInterval(salvarEstado, 30000);
+        window.addEventListener('beforeunload', salvarEstado);
+    </script>
+</body>
+</html>
