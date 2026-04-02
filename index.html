@@ -187,6 +187,22 @@
 <body>
     <div class="container">
         <h1>Ciclo de Estudos</h1>
+        <div id="topAuthBar" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px; padding:12px 14px; border:1px solid var(--border-color); border-radius:8px; background:#fff;">
+            <div id="usuarioInfo" style="font-size:14px; color:#333;">Verificando sessão...</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a id="btnIrLogin" href="login.html" style="display:none; background-color:var(--primary-color); color:#fff; padding:10px 15px; border-radius:4px; text-decoration:none;">Entrar</a>
+                <button id="btnLogoutTop" type="button" style="display:none;">Sair</button>
+            </div>
+        </div>
+        <div id="bloqueioAuth" style="display:none; margin-bottom:20px; padding:18px; border:1px solid var(--border-color); border-radius:8px; background:#fff;">
+            <h2 style="margin-bottom:10px;">Faça login para usar o app</h2>
+            <p style="margin-bottom:12px;">Seu progresso é salvo online. Para acessar seu ciclo de estudos, entre com sua conta ou crie uma nova.</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a href="login.html" style="background-color:var(--primary-color); color:#fff; padding:10px 15px; border-radius:4px; text-decoration:none;">Entrar</a>
+                <a href="criar-conta.html" style="background-color:var(--accent-color); color:#fff; padding:10px 15px; border-radius:4px; text-decoration:none;">Criar conta</a>
+            </div>
+        </div>
+
 
         <div class="tab-container">
             <button class="tab active" data-tab="home">Home</button>
@@ -201,18 +217,7 @@
 
         <div id="home" class="tab-content active">
             <h2>Configuração do Ciclo</h2>
-            <div id="authBox" style="margin-bottom: 20px; padding: 15px; border: 1px solid var(--border-color); border-radius: 5px; background: #fff;">
-                <h3>Login</h3>
-                <input type="email" id="email" placeholder="Seu e-mail">
-                <input type="password" id="senha" placeholder="Sua senha">
-                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-                    <button id="btnCadastro" type="button">Criar conta</button>
-                    <button id="btnLogin" type="button">Entrar</button>
-                    <button id="btnLogout" type="button" style="display:none;">Sair</button>
-                </div>
-                <p id="authStatus"></p>
-            </div>
-            <div id="inicio">
+<div id="inicio">
                 <form id="horasForm">
                     <label for="horasSemanais">Quantas horas por semana você pode dedicar aos estudos?</label>
                     <input type="number" id="horasSemanais" name="horasSemanais" min="1" required>
@@ -316,7 +321,7 @@
     <script>
         const SUPABASE_URL = 'https://znkxhacjuejmxhgcaqvz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let materiasList = [
             {nome: "AFO", legenda: "AFO"},
@@ -345,6 +350,11 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
             return SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
         }
 
+        function getBaseUrl() {
+            const path = window.location.pathname || '';
+            return path.endsWith('/') ? path : path.replace(/[^/]+$/, '');
+        }
+
         function setAuthStatus(msg, isError = false) {
             const el = document.getElementById('authStatus');
             if (!el) return;
@@ -354,7 +364,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
 
         async function getUsuarioLogado() {
             if (!supabaseConfigurado()) return null;
-            const { data, error } = await supabase.auth.getUser();
+            const { data, error } = await supabaseClient.auth.getUser();
             if (error) {
                 console.error(error);
                 return null;
@@ -362,70 +372,48 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
             return data.user || null;
         }
 
-        async function cadastrar() {
-            if (!supabaseConfigurado()) {
-                setAuthStatus('Preencha SUPABASE_URL e SUPABASE_ANON_KEY no arquivo.', true);
-                return;
-            }
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('senha').value;
-            if (!email || !password) {
-                setAuthStatus('Informe e-mail e senha.', true);
-                return;
-            }
-            const { error } = await supabase.auth.signUp({ email, password });
-            if (error) {
-                setAuthStatus(`Erro: ${error.message}`, true);
-                return;
-            }
-            setAuthStatus('Conta criada. Se a confirmação por e-mail estiver ativa, verifique sua caixa de entrada.');
-            await atualizarUIAuth();
-        }
-
-        async function entrar() {
-            if (!supabaseConfigurado()) {
-                setAuthStatus('Preencha SUPABASE_URL e SUPABASE_ANON_KEY no arquivo.', true);
-                return;
-            }
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('senha').value;
-            if (!email || !password) {
-                setAuthStatus('Informe e-mail e senha.', true);
-                return;
-            }
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                setAuthStatus(`Erro: ${error.message}`, true);
-                return;
-            }
-            setAuthStatus('Login realizado com sucesso.');
-            await carregarEstadoNuvem();
-            await atualizarUIAuth();
+        async function redirecionarParaLogin() {
+            const base = getBaseUrl();
+            window.location.href = base + 'login.html';
         }
 
         async function sair() {
             if (!supabaseConfigurado()) return;
-            const { error } = await supabase.auth.signOut();
+            const { error } = await supabaseClient.auth.signOut();
             if (error) {
-                setAuthStatus(`Erro ao sair: ${error.message}`, true);
+                console.error(error);
                 return;
             }
-            setAuthStatus('Você saiu.');
-            await atualizarUIAuth();
+            const base = getBaseUrl();
+            window.location.href = base + 'login.html';
         }
 
         async function atualizarUIAuth() {
             const user = await getUsuarioLogado();
             const logado = !!user;
-            document.getElementById('btnLogout').style.display = logado ? 'inline-block' : 'none';
-            document.getElementById('btnLogin').style.display = logado ? 'inline-block' : 'inline-block';
-            document.getElementById('btnCadastro').style.display = logado ? 'none' : 'inline-block';
-            document.getElementById('email').disabled = logado;
-            document.getElementById('senha').disabled = logado;
-            if (logado) {
-                document.getElementById('btnLogin').style.display = 'none';
-                setAuthStatus(`Logado como ${user.email}.`);
+            const usuarioInfo = document.getElementById('usuarioInfo');
+            const btnIrLogin = document.getElementById('btnIrLogin');
+            const btnLogoutTop = document.getElementById('btnLogoutTop');
+            const bloqueioAuth = document.getElementById('bloqueioAuth');
+
+            if (usuarioInfo) {
+                usuarioInfo.textContent = logado ? `Logado como ${user.email}` : 'Você não está logado.';
             }
+            if (btnIrLogin) btnIrLogin.style.display = logado ? 'none' : 'inline-block';
+            if (btnLogoutTop) btnLogoutTop.style.display = logado ? 'inline-block' : 'none';
+            if (bloqueioAuth) bloqueioAuth.style.display = logado ? 'none' : 'block';
+
+            const abas = document.querySelector('.tab-container');
+            const homeInicio = document.getElementById('inicio');
+            const homeContinuar = document.getElementById('continuar');
+
+            if (abas) abas.style.display = logado ? 'flex' : 'none';
+            if (!logado) {
+                if (homeInicio) homeInicio.style.display = 'none';
+                if (homeContinuar) homeContinuar.style.display = 'none';
+                alternarAba('home');
+            }
+            return logado;
         }
 
         async function salvarEstadoNuvem() {
@@ -445,7 +433,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
 
             const anotacoes = document.getElementById('anotacoesTexto')?.value || '';
 
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('progresso')
                 .upsert({
                     user_id: user.id,
@@ -464,7 +452,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
             const user = await getUsuarioLogado();
             if (!user) return;
 
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('progresso')
                 .select('estado, anotacoes')
                 .eq('user_id', user.id)
@@ -474,7 +462,11 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
                 console.error('Erro ao carregar da nuvem:', error);
                 return;
             }
-            if (!data) return;
+            if (!data) {
+                document.getElementById('inicio').style.display = 'block';
+                document.getElementById('continuar').style.display = 'none';
+                return;
+            }
 
             if (data.estado) {
                 materiasList = data.estado.materiasList || materiasList;
@@ -493,6 +485,9 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
                 if (blocosAtivos.length > 0) {
                     document.getElementById('inicio').style.display = 'none';
                     document.getElementById('continuar').style.display = 'block';
+                } else {
+                    document.getElementById('inicio').style.display = 'block';
+                    document.getElementById('continuar').style.display = 'none';
                 }
             }
 
@@ -1327,33 +1322,37 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
             document.getElementById('novoEstudo').addEventListener('click', iniciarNovoEstudo);
             document.getElementById('gerarPDF').addEventListener('click', gerarPDF);
             document.getElementById('exportarExcel').addEventListener('click', exportarParaExcel);
-            document.getElementById('btnCadastro').addEventListener('click', cadastrar);
-            document.getElementById('btnLogin').addEventListener('click', entrar);
-            document.getElementById('btnLogout').addEventListener('click', sair);
+            const btnLogoutTop = document.getElementById('btnLogoutTop');
+            if (btnLogoutTop) btnLogoutTop.addEventListener('click', sair);
 
             inicializarSelecaoMaterias();
             carregarAnotacoes();
             carregarConfiguracoes();
             carregarEstado();
-            await atualizarUIAuth();
+
+            const logado = await atualizarUIAuth();
             if (supabaseConfigurado()) {
-                const { data } = await supabase.auth.getSession();
+                const { data } = await supabaseClient.auth.getSession();
                 if (data.session) {
                     await carregarEstadoNuvem();
                 }
-                supabase.auth.onAuthStateChange(async (_event, session) => {
+                supabaseClient.auth.onAuthStateChange(async (_event, session) => {
                     if (session) {
                         await carregarEstadoNuvem();
                     }
                     await atualizarUIAuth();
                 });
             }
+
+            if (!logado) {
+                alternarAba('home');
+            }
         });
 
         // Salvar estado periodicamente e na saída da página
         // salvarAoSair = false impede o re-salvamento ao clicar em "Iniciar Novo Estudo"
         let salvarAoSair = true;
-        setInterval(salvarEstado, 30000);
+        setInterval(async () => { if (await getUsuarioLogado()) salvarEstado(); }, 30000);
         window.addEventListener('beforeunload', () => {
             if (salvarAoSair) salvarEstado();
         });
