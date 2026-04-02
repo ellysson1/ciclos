@@ -201,6 +201,17 @@
 
         <div id="home" class="tab-content active">
             <h2>Configuração do Ciclo</h2>
+            <div id="authBox" style="margin-bottom: 20px; padding: 15px; border: 1px solid var(--border-color); border-radius: 5px; background: #fff;">
+                <h3>Login</h3>
+                <input type="email" id="email" placeholder="Seu e-mail">
+                <input type="password" id="senha" placeholder="Sua senha">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                    <button id="btnCadastro" type="button">Criar conta</button>
+                    <button id="btnLogin" type="button">Entrar</button>
+                    <button id="btnLogout" type="button" style="display:none;">Sair</button>
+                </div>
+                <p id="authStatus"></p>
+            </div>
             <div id="inicio">
                 <form id="horasForm">
                     <label for="horasSemanais">Quantas horas por semana você pode dedicar aos estudos?</label>
@@ -301,7 +312,12 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        const SUPABASE_URL = 'https://znkxhacjuejmxhgcaqvz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ULAmkcVfbsAzJ6tRCQJarQ_WGMbMaTo';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         let materiasList = [
             {nome: "AFO", legenda: "AFO"},
             {nome: "CONTABILIDADE GERAL", legenda: "CGE"},
@@ -324,6 +340,166 @@
             intervaloEntreBlocos: 5,
             blocosPorSessao: 4
         };
+
+        function supabaseConfigurado() {
+            return SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
+        }
+
+        function setAuthStatus(msg, isError = false) {
+            const el = document.getElementById('authStatus');
+            if (!el) return;
+            el.textContent = msg;
+            el.style.color = isError ? '#C62828' : '#2E7D32';
+        }
+
+        async function getUsuarioLogado() {
+            if (!supabaseConfigurado()) return null;
+            const { data, error } = await supabase.auth.getUser();
+            if (error) {
+                console.error(error);
+                return null;
+            }
+            return data.user || null;
+        }
+
+        async function cadastrar() {
+            if (!supabaseConfigurado()) {
+                setAuthStatus('Preencha SUPABASE_URL e SUPABASE_ANON_KEY no arquivo.', true);
+                return;
+            }
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('senha').value;
+            if (!email || !password) {
+                setAuthStatus('Informe e-mail e senha.', true);
+                return;
+            }
+            const { error } = await supabase.auth.signUp({ email, password });
+            if (error) {
+                setAuthStatus(`Erro: ${error.message}`, true);
+                return;
+            }
+            setAuthStatus('Conta criada. Se a confirmação por e-mail estiver ativa, verifique sua caixa de entrada.');
+            await atualizarUIAuth();
+        }
+
+        async function entrar() {
+            if (!supabaseConfigurado()) {
+                setAuthStatus('Preencha SUPABASE_URL e SUPABASE_ANON_KEY no arquivo.', true);
+                return;
+            }
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('senha').value;
+            if (!email || !password) {
+                setAuthStatus('Informe e-mail e senha.', true);
+                return;
+            }
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                setAuthStatus(`Erro: ${error.message}`, true);
+                return;
+            }
+            setAuthStatus('Login realizado com sucesso.');
+            await carregarEstadoNuvem();
+            await atualizarUIAuth();
+        }
+
+        async function sair() {
+            if (!supabaseConfigurado()) return;
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                setAuthStatus(`Erro ao sair: ${error.message}`, true);
+                return;
+            }
+            setAuthStatus('Você saiu.');
+            await atualizarUIAuth();
+        }
+
+        async function atualizarUIAuth() {
+            const user = await getUsuarioLogado();
+            const logado = !!user;
+            document.getElementById('btnLogout').style.display = logado ? 'inline-block' : 'none';
+            document.getElementById('btnLogin').style.display = logado ? 'inline-block' : 'inline-block';
+            document.getElementById('btnCadastro').style.display = logado ? 'none' : 'inline-block';
+            document.getElementById('email').disabled = logado;
+            document.getElementById('senha').disabled = logado;
+            if (logado) {
+                document.getElementById('btnLogin').style.display = 'none';
+                setAuthStatus(`Logado como ${user.email}.`);
+            }
+        }
+
+        async function salvarEstadoNuvem() {
+            if (!supabaseConfigurado()) return;
+            const user = await getUsuarioLogado();
+            if (!user) return;
+
+            const estado = {
+                materiasList,
+                materiasSelecionadas,
+                blocosAtivos,
+                tempoDecorrido,
+                modoCronometro,
+                configuracoes,
+                horasSemanais: document.getElementById('horasSemanais')?.value || null
+            };
+
+            const anotacoes = document.getElementById('anotacoesTexto')?.value || '';
+
+            const { error } = await supabase
+                .from('progresso')
+                .upsert({
+                    user_id: user.id,
+                    estado,
+                    anotacoes,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+
+            if (error) {
+                console.error('Erro ao salvar na nuvem:', error);
+            }
+        }
+
+        async function carregarEstadoNuvem() {
+            if (!supabaseConfigurado()) return;
+            const user = await getUsuarioLogado();
+            if (!user) return;
+
+            const { data, error } = await supabase
+                .from('progresso')
+                .select('estado, anotacoes')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (error) {
+                console.error('Erro ao carregar da nuvem:', error);
+                return;
+            }
+            if (!data) return;
+
+            if (data.estado) {
+                materiasList = data.estado.materiasList || materiasList;
+                materiasSelecionadas = data.estado.materiasSelecionadas || [];
+                blocosAtivos = data.estado.blocosAtivos || [];
+                tempoDecorrido = data.estado.tempoDecorrido || 0;
+                modoCronometro = data.estado.modoCronometro ?? true;
+                configuracoes = data.estado.configuracoes || configuracoes;
+
+                if (data.estado.horasSemanais) {
+                    document.getElementById('horasSemanais').value = data.estado.horasSemanais;
+                }
+
+                inicializarSelecaoMaterias();
+                carregarConfiguracoes();
+                if (blocosAtivos.length > 0) {
+                    document.getElementById('inicio').style.display = 'none';
+                    document.getElementById('continuar').style.display = 'block';
+                }
+            }
+
+            if (typeof data.anotacoes === 'string') {
+                document.getElementById('anotacoesTexto').value = data.anotacoes;
+            }
+        }
 
         function alternarAba(tabName) {
             document.querySelectorAll('.tab-content').forEach(content => {
@@ -844,9 +1020,10 @@
             atualizarExibicaoTempo();
         }
 
-        function salvarAnotacoes() {
+        async function salvarAnotacoes() {
             const anotacoes = document.getElementById('anotacoesTexto').value;
             localStorage.setItem('cicloEstudosAnotacoes', anotacoes);
+            await salvarEstadoNuvem();
             alert('Anotações salvas com sucesso!');
         }
 
@@ -910,9 +1087,11 @@
                 blocosAtivos,
                 tempoDecorrido,
                 modoCronometro,
-                configuracoes
+                configuracoes,
+                horasSemanais: document.getElementById('horasSemanais')?.value || null
             };
             localStorage.setItem('cicloEstudosEstado', JSON.stringify(estado));
+            salvarEstadoNuvem();
         }
 
         function carregarEstado() {
@@ -926,7 +1105,7 @@
                 modoCronometro = estado.modoCronometro;
                 configuracoes = estado.configuracoes;
 
-                document.getElementById('horasSemanais').value = blocosAtivos.length;
+                document.getElementById('horasSemanais').value = estado.horasSemanais || '';
                 document.getElementById('inicio').style.display = 'none';
                 document.getElementById('continuar').style.display = 'block';
             }
@@ -938,6 +1117,8 @@
         }
 
         function iniciarNovoEstudo() {
+            // Impedir que o beforeunload re-salve o estado antes do reload
+            salvarAoSair = false;
             localStorage.removeItem('cicloEstudosEstado');
             localStorage.removeItem('cicloEstudosAnotacoes');
             location.reload();
@@ -948,6 +1129,7 @@
             let printContent = `
                 <html>
                 <head>
+                    <meta charset="UTF-8">
                     <title>Ciclo de Estudos - PDF</title>
                     <style>
                         @page { size: A4 landscape; margin: 1cm; }
@@ -994,7 +1176,7 @@
 
             printContent += '</div></div></body></html>';
 
-            const blob = new Blob([printContent], { type: 'text/html' });
+            const blob = new Blob([printContent], { type: 'text/html;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const printWindow = window.open(url, '_blank');
             setTimeout(() => {
@@ -1004,43 +1186,104 @@
         }
 
         function exportarParaExcel() {
-            let wb = XLSX.utils.book_new();
-            let ws_data = [["Ciclo de Estudos"]];
+            const bps = configuracoes.blocosPorSessao;
+            const nCols = bps + 1;
 
-            let blocoCounter = 0;
-            let sessaoCounter = 1;
-            let linha = [];
+            // Agrupar blocos por sessão
+            const sessoes = [];
+            for (let i = 0; i < blocosAtivos.length; i += bps) {
+                sessoes.push(blocosAtivos.slice(i, i + bps));
+            }
 
-            blocosAtivos.forEach((bloco, index) => {
-                if (blocoCounter % configuracoes.blocosPorSessao === 0 && blocoCounter !== 0) {
-                    linha.push({v: `Intervalo (${configuracoes.intervaloEntreBlocos}min)`, s: {fill: {fgColor: {rgb: "FFFFFF"}}}});
-                    ws_data.push(linha);
+            // Estilo base de célula
+            const td = 'padding:8px 14px; text-align:center; vertical-align:middle; border:1px solid #CCCCCC; min-width:110px; font-family:Arial,sans-serif; font-size:10pt;';
 
-                    linha = [{v: `Sessão ${sessaoCounter}`, s: {font: {bold: true}}}];
-                    sessaoCounter++;
-                }
+            let html = `<html><head><meta charset="UTF-8"></head><body>
+            <table border="1" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">`;
 
-                // FIX 3: converter cor HSL para hex antes de passar ao Excel
-                const hexCor = hslToHex(bloco.cor);
-                linha.push({
-                    v: `${bloco.legenda} (${bloco.duracaoEspecifica || configuracoes.duracaoBloco}min)`,
-                    s: {fill: {fgColor: {rgb: hexCor}}}
+            // ── Título ──────────────────────────────────────────────────────────────
+            html += `<tr>
+                <td colspan="${nCols}" style="${td} background-color:#4A90E2; color:#FFFFFF;
+                    font-weight:bold; font-size:14pt; height:36px;">
+                    CICLO DE ESTUDOS
+                </td>
+            </tr>`;
+
+            // ── Cabeçalho de colunas ────────────────────────────────────────────────
+            html += `<tr>
+                <td style="${td} background-color:#2C3E50; color:#FFFFFF; font-weight:bold;">Sessão</td>`;
+            for (let c = 1; c <= bps; c++) {
+                html += `<td style="${td} background-color:#7F8C8D; color:#FFFFFF; font-weight:bold;">Bloco ${c}</td>`;
+            }
+            html += `</tr>`;
+
+            // ── Sessões ─────────────────────────────────────────────────────────────
+            sessoes.forEach((sessao, idx) => {
+                html += `<tr>
+                    <td style="${td} background-color:#2C3E50; color:#FFFFFF; font-weight:bold; font-size:11pt;">
+                        Sessão ${idx + 1}
+                    </td>`;
+
+                sessao.forEach(bloco => {
+                    const duracao = bloco.duracaoEspecifica || configuracoes.duracaoBloco;
+                    if (bloco.concluido) {
+                        html += `<td style="${td} background-color:#4CAF50; color:#FFFFFF; font-weight:bold;">
+                            ${bloco.legenda}<br>
+                            <span style="font-size:9pt; font-weight:normal;">${duracao}min ✓</span>
+                        </td>`;
+                    } else {
+                        const hex = hslToHex(bloco.cor);
+                        html += `<td style="${td} background-color:#${hex}; color:#333333; font-weight:bold;">
+                            ${bloco.legenda}<br>
+                            <span style="font-size:9pt; font-weight:normal;">${duracao}min</span>
+                        </td>`;
+                    }
                 });
 
-                blocoCounter++;
+                // Células vazias se a sessão for incompleta (última sessão)
+                for (let c = sessao.length; c < bps; c++) {
+                    html += `<td style="${td} background-color:#F5F5F5; color:#BBBBBB;">—</td>`;
+                }
+                html += `</tr>`;
 
-                if (index === blocosAtivos.length - 1 || blocoCounter % configuracoes.blocosPorSessao === 0) {
-                    ws_data.push(linha);
-                    linha = [];
+                // Linha de intervalo entre sessões
+                if (idx < sessoes.length - 1) {
+                    html += `<tr>
+                        <td colspan="${nCols}" style="${td} background-color:#F0F4F8; color:#888888;
+                            font-style:italic; height:22px;">
+                            ⏸ Intervalo: ${configuracoes.intervaloEntreBlocos} min
+                        </td>
+                    </tr>`;
                 }
             });
 
-            let ws = XLSX.utils.aoa_to_sheet(ws_data);
-            XLSX.utils.book_append_sheet(wb, ws, "Ciclo de Estudos");
-            XLSX.writeFile(wb, "ciclo_de_estudos.xlsx");
+            // ── Rodapé com totais ────────────────────────────────────────────────────
+            const total      = blocosAtivos.length;
+            const concluidos = blocosAtivos.filter(b => b.concluido).length;
+            html += `<tr>
+                <td colspan="${nCols}" style="${td} background-color:#ECF0F1; color:#555555;
+                    font-size:9pt; height:24px;">
+                    Total: ${total} blocos &nbsp;|&nbsp;
+                    Concluídos: ${concluidos} &nbsp;|&nbsp;
+                    Pendentes: ${total - concluidos}
+                </td>
+            </tr>`;
+
+            html += `</table></body></html>`;
+
+            // Baixar como .xls (Excel lê HTML nativamente com estilos)
+            const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = 'ciclo_de_estudos.xls';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', function() {
                     alternarAba(this.getAttribute('data-tab'));
@@ -1084,16 +1327,36 @@
             document.getElementById('novoEstudo').addEventListener('click', iniciarNovoEstudo);
             document.getElementById('gerarPDF').addEventListener('click', gerarPDF);
             document.getElementById('exportarExcel').addEventListener('click', exportarParaExcel);
+            document.getElementById('btnCadastro').addEventListener('click', cadastrar);
+            document.getElementById('btnLogin').addEventListener('click', entrar);
+            document.getElementById('btnLogout').addEventListener('click', sair);
 
             inicializarSelecaoMaterias();
             carregarAnotacoes();
             carregarConfiguracoes();
             carregarEstado();
+            await atualizarUIAuth();
+            if (supabaseConfigurado()) {
+                const { data } = await supabase.auth.getSession();
+                if (data.session) {
+                    await carregarEstadoNuvem();
+                }
+                supabase.auth.onAuthStateChange(async (_event, session) => {
+                    if (session) {
+                        await carregarEstadoNuvem();
+                    }
+                    await atualizarUIAuth();
+                });
+            }
         });
 
-        // FIX 10: salvar estado periodicamente (a cada 30s) e também na saída da página
+        // Salvar estado periodicamente e na saída da página
+        // salvarAoSair = false impede o re-salvamento ao clicar em "Iniciar Novo Estudo"
+        let salvarAoSair = true;
         setInterval(salvarEstado, 30000);
-        window.addEventListener('beforeunload', salvarEstado);
+        window.addEventListener('beforeunload', () => {
+            if (salvarAoSair) salvarEstado();
+        });
     </script>
 </body>
 </html>
